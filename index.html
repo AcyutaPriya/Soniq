@@ -481,8 +481,23 @@
   <div class="ctx-row" id="ctx-play"><svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>Play Now</div>
   <div class="ctx-row" id="ctx-fav"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>Add to Favorites</div>
   <div class="ctx-row" id="ctx-addpl"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add to Playlist</div>
+  <div class="ctx-row" id="ctx-edit"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Edit Info</div>
   <div class="ctx-div"></div>
   <div class="ctx-row red" id="ctx-del"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6M10 11v6M14 11v6M9 6V4h6v2"/></svg>Remove</div>
+</div>
+
+<!-- Edit Song Modal -->
+<div class="backdrop" id="modal-edit-song">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Edit Song Info</div>
+    <label style="font-size:12px;font-weight:600;color:var(--text-2);letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:6px;">Title</label>
+    <input class="sheet-input" id="edit-title-in" placeholder="Song title…" type="text" maxlength="100">
+    <label style="font-size:12px;font-weight:600;color:var(--text-2);letter-spacing:1px;text-transform:uppercase;display:block;margin:14px 0 6px;">Artist</label>
+    <input class="sheet-input" id="edit-artist-in" placeholder="Artist name…" type="text" maxlength="100">
+    <button class="sheet-btn pk" id="edit-song-ok">Save Changes</button>
+    <button class="sheet-btn sec" id="edit-song-cancel">Cancel</button>
+  </div>
 </div>
 
 <div id="toast"></div>
@@ -621,7 +636,36 @@ $('ctx-play').addEventListener('click',()=>{const i=S.songs.findIndex(s=>s.id===
 $('ctx-fav').addEventListener('click',()=>{toggleFav(S.ctxId);closeCtx();});
 $('ctx-addpl').addEventListener('click',()=>{const inp=$('ctx-addpl').dataset.inp==='1';if(inp&&S.detailPl){removeFromPl(S.ctxId,S.detailPl);closeCtx();}else{closeCtx();openAddPl(S.ctxId);}});
 $('ctx-del').addEventListener('click',()=>{if(confirm('Remove this song?'))deleteSong(S.ctxId);closeCtx();});
+$('ctx-edit').addEventListener('click',()=>{ openEditModal(S.ctxId); closeCtx(); });
 document.addEventListener('click',e=>{if(ctxJustOpened)return;if(!$('ctx').contains(e.target))closeCtx();});
+
+function openEditModal(id) {
+  const song = S.songs.find(s=>s.id===id);
+  if (!song) return;
+  $('edit-title-in').value = song.title;
+  $('edit-artist-in').value = song.artist;
+  openModal('modal-edit-song');
+}
+
+$('edit-song-ok').addEventListener('click', ()=>{
+  const song = S.songs.find(s=>s.id===S.ctxId);
+  if (!song) return;
+  const newTitle = $('edit-title-in').value.trim();
+  const newArtist = $('edit-artist-in').value.trim();
+  if (!newTitle) { toast('Title cannot be empty'); return; }
+  song.title = newTitle;
+  song.artist = newArtist || 'Unknown Artist';
+  DB.putSong(song);
+  renderLib(); renderFavs(); renderPls();
+  if (S.detailPl) renderDetail(S.detailPl);
+  updUI();
+  closeModal('modal-edit-song');
+  toast('Song info updated ✓');
+});
+
+$('edit-song-cancel').addEventListener('click', ()=>closeModal('modal-edit-song'));
+$('edit-title-in').addEventListener('keydown', e=>{ if(e.key==='Enter') $('edit-artist-in').focus(); });
+$('edit-artist-in').addEventListener('keydown', e=>{ if(e.key==='Enter') $('edit-song-ok').click(); });
 
 function openAddPl(sid){S.addPlId=sid;const list=$('pl-modal-list');list.innerHTML='';if(!S.playlists.length){list.innerHTML='<div style="text-align:center;color:var(--text-2);padding:20px;font-size:14px;">No playlists yet!</div>';}else{S.playlists.forEach(pl=>{const d=document.createElement('div');d.className='pl-modal-item';d.innerHTML=`<svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>${esc(pl.name)}<span style="margin-left:auto;color:var(--text-3);font-size:12px;">${pl.songIds.length}</span>`;d.addEventListener('click',()=>{addToPl(S.addPlId,pl.id);closeModal('modal-add-pl');});list.appendChild(d);});}openModal('modal-add-pl');}
 
